@@ -1,6 +1,38 @@
 
 let displaySettings = { clockFormat: '12', dateFormat: 'MDY', tempUnit: 'C', showTodos: true, showEvents: true };
 
+// ===== SPLASH SCREEN =====
+(function initSplashScreen() {
+    const splash = document.getElementById('splash-screen');
+    if (!splash) return;
+
+    const statusEl = splash.querySelector('.splash-status');
+    const messages = [
+        'Initializing...',
+        'Booting resources...',
+        'Loading modules...',
+        'Setting up dashboard...',
+        'Almost ready...'
+    ];
+    let msgIndex = 0;
+    const randomDelay = Math.floor(Math.random() * 3000) + 500; // 500ms to 1500ms
+    const statusInterval = setInterval(() => {
+        msgIndex++;
+        if (msgIndex < messages.length && statusEl) {
+            statusEl.textContent = messages[msgIndex];
+        }
+    }, randomDelay);
+
+    setTimeout(() => {
+        clearInterval(statusInterval);
+        splash.classList.add('fade-out');
+        setTimeout(() => {
+            splash.classList.add('hidden');
+        }, 800);
+    }, 5000);
+})();
+// ===== END SPLASH SCREEN =====
+
 const upcomingEventBox = document.getElementById('upcoming-event-box');
 const upcomingEventText = document.getElementById('upcoming-event-text');
 
