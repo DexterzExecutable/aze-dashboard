@@ -122,7 +122,32 @@ npm install
 
 This installs Express, Socket.IO, and the other packages the server needs.
 
-### Step 3: Install Pi-Specific Tools
+### Step 3: Configure Environment Variables
+
+Copy the example environment file and add your API keys:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and add your Pexels API key (required for background image search):
+
+```bash
+# Get your free API key at: https://www.pexels.com/api/
+PEXELS_API_KEY=your_pexels_api_key_here
+PORT=4000
+CAMERA_STREAM_PORT=8081
+```
+
+**Getting a Pexels API Key:**
+1. Go to [pexels.com/api](https://www.pexels.com/api/)
+2. Create a free account
+3. Click "Your API Key" to generate one
+4. Paste it in your `.env` file
+
+The dashboard will still work without it, but you won't be able to search for background images.
+
+### Step 4: Install Pi-Specific Tools
 
 ```bash
 sudo apt update
@@ -134,7 +159,7 @@ sudo npm install -g pm2
 - **chromium-browser** — Runs the dashboard in kiosk mode
 - **pm2** — Keeps your server running and auto-restarts on crash
 
-### Step 4: Set Up the Camera (Optional)
+### Step 5: Set Up the Camera (Optional)
 
 If you want the camera screen:
 
@@ -295,6 +320,18 @@ The control panel at `/control` is where you manage everything. It's organized i
 ---
 
 ## Configuration Deep Dive
+
+### Environment Variables
+
+Aze Dashboard uses a `.env` file for sensitive configuration. Copy `.env.example` to `.env` and configure:
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `PORT` | No | 4000 | Server port |
+| `PEXELS_API_KEY` | Yes* | - | API key for background image search |
+| `CAMERA_STREAM_PORT` | No | 8081 | Port for camera MJPEG stream |
+
+*Required only if you want to use the background image search feature.
 
 ### Camera Settings
 

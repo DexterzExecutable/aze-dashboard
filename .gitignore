@@ -5,6 +5,9 @@ node_modules/
 .vscode/
 .idea/
 
+# Environment variables
+.env
+
 # Runtime/Settings
 settings.json
 

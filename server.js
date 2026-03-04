@@ -1,3 +1,4 @@
+require('dotenv').config();
 const path = require('path'); 
 const express = require("express");
 const http = require("http");
@@ -8,6 +9,11 @@ const Parser = require('rss-parser');
 const rssParser = new Parser();
 const multer = require('multer');
 const fs = require('fs');
+
+// Environment variables
+const PORT = process.env.PORT || 4000;
+const PEXELS_API_KEY = process.env.PEXELS_API_KEY || '';
+const CAMERA_STREAM_PORT = process.env.CAMERA_STREAM_PORT || 8081;
 
 // Settings file path for persistence
 const SETTINGS_FILE = path.join(__dirname, 'settings.json');
@@ -46,7 +52,7 @@ const defaultSettings = {
         brightness: 100,
         contrast: 100,
         autoStart: false,
-        streamPort: 8081
+        streamPort: parseInt(CAMERA_STREAM_PORT) || 8081
     },
     customPresets: []
 };
@@ -791,9 +797,14 @@ app.get('/search-background', async (req, res) => {
     const https = require('https');
     const perPage = 20; // Show 20 images per page
     
-    // Pexels API key (free tier - 200 requests/hour)
-    // Get your own free key at: https://www.pexels.com/api/
-    const PEXELS_API_KEY = 'aAJQOCQty52tIihGEsY2XsebEO6Hvg0g7sk28LdRaHpbAom2zHaiBHx5';
+    // Check if Pexels API key is configured
+    if (!PEXELS_API_KEY) {
+        return res.status(500).json({ 
+            photos: [], 
+            total_results: 0, 
+            error: 'Pexels API key not configured. Add PEXELS_API_KEY to your .env file.' 
+        });
+    }
     
     console.log(`Searching Pexels for: "${keyword}" (page ${page})`);
     
@@ -1009,6 +1020,10 @@ chokidar.watch("public").on("change", () => {
     io.emit("reload");
 });
 
-server.listen(4000, () => {
-    console.log("Running...");
+server.listen(PORT, () => {
+    console.log(`Aze Dashboard running on http://localhost:${PORT}`);
+    if (!PEXELS_API_KEY) {
+        console.log('Warning: PEXELS_API_KEY not set. Background search will not work.');
+        console.log('Get a free API key at: https://www.pexels.com/api/');
+    }
 });
