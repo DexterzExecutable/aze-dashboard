@@ -1,0 +1,57 @@
+{
+  "name": "aze-dashboard",
+  "version": "1.0.0",
+  "description": "A personal live dashboard for Raspberry Pi featuring real-time screen cycling, camera with object detection, weather, news feeds, todos, and remote control via mobile-friendly interface",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "camera": "python3 camera_detection.py",
+    "camera:bg": "python3 camera_detection.py &",
+    "pm2:start": "pm2 start server.js --name aze-dashboard",
+    "pm2:stop": "pm2 stop aze-dashboard",
+    "pm2:restart": "pm2 restart aze-dashboard",
+    "pm2:logs": "pm2 logs aze-dashboard",
+    "pm2:save": "pm2 save",
+    "kiosk": "chromium-browser --kiosk http://localhost:4000"
+  },
+  "keywords": [
+    "raspberry-pi",
+    "dashboard",
+    "smart-display",
+    "iot",
+    "home-automation",
+    "real-time",
+    "socket.io",
+    "weather",
+    "rss",
+    "news-feed",
+    "camera",
+    "object-detection",
+    "mobilenet",
+    "kiosk",
+    "pi-dashboard",
+    "smart-home",
+    "digital-signage"
+  ],
+  "author": "Prahaas",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DexterzExecutable/aze-dashboard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/DexterzExecutable/aze-dashboard/issues"
+  },
+  "homepage": "https://github.com/DexterzExecutable/aze-dashboard#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "chokidar": "^5.0.0",
+    "express": "^5.2.1",
+    "multer": "^2.1.0",
+    "rss-parser": "^3.13.0",
+    "socket.io": "^4.8.3"
+  }
+}

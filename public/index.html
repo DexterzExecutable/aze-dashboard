@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Pi Live Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./styles/style.css">
+    <link rel="stylesheet" href="./css/all.min.css">
+    <script src="/socket.io/socket.io.js"></script>
+    
+</head>
+<body>
+   
+    <!-- Dim overlay -->
+    <div id="dimOverlay" style="
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: black;
+        opacity: 0;
+        pointer-events: none;
+        z-index: 1000;
+        transition: opacity 0.5s ease;
+    "></div>
+
+    <!-- Screen Container for Cycling -->
+    <div id="screenContainer">
+        <!-- HOME SCREEN -->
+        <div class="screen" id="screen-home">
+            <!-- Corner widgets -->
+            <div id="weather"></div>
+            <div id="upcoming-event-box" style="display: none;">
+                <i class="fas fa-calendar-day" style="color: var(--primary); margin-right: 8px;"></i>
+                <span id="upcoming-event-text">Loading event...</span>
+            </div>
+            <div id="multi-todo-box" style="display: none;">
+                <ul id="multi-todo-list"></ul>
+            </div>
+            <!-- <div id="single-todo-box">
+                <span id="single-todo-text">Loading...</span>
+            </div> -->
+
+            <!-- Centered content -->
+            <div class="home-center">
+                <div id="clock-container">
+                    <div id="clock"></div>
+                    <div id="ampm" class="ampm-small"></div>
+                </div>
+                <div id="greeting"></div>
+            </div>
+        </div>
+
+        <!-- WEATHER SCREEN -->
+        <div class="screen" id="screen-weather" style="display: none;">
+            <!-- <div class="screen-title">
+                Weather
+            </div> -->
+            <div id="weather-full">
+                <div class="weather-current">
+                    <div id="weather-temp-large">--°C</div>
+                    <div id="weather-condition">Loading...</div>
+                </div>
+                <div class="weather-details">
+                    <div class="weather-item">
+                        <i class="fas fa-wind"></i>
+                        <span id="weather-wind">-- km/h</span>
+                    </div>
+                    <div class="weather-item">
+                        <i class="fas fa-tint"></i>
+                        <span id="weather-humidity">-- %</span>
+                    </div>
+                    <div class="weather-item">
+                        <i class="fas fa-eye"></i>
+                        <span id="weather-visibility">-- km</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- NEWS SCREEN -->
+        <div class="screen" id="screen-news" style="display: none;">
+            <!-- <div class="screen-title">
+                NEWS
+            </div> -->
+            <div id="news-ticker">
+                <div id="news-list"></div>
+                <div class="news-indicator" id="newsIndicator"></div>
+            </div>
+        </div>
+
+        <!-- STATS SCREEN -->
+        <div class="screen" id="screen-stats" style="display: none;">
+            <!-- <div class="screen-title">
+                System Monitor
+            </div> -->
+            <div id="stats-container">
+                <div class="stat-box">
+                    <i class="fas fa-memory"></i>
+                    <div class="stat-label">RAM</div>
+                    <div class="stat-value" id="stat-ram">-- MB</div>
+                </div>
+                <div class="stat-box">
+                    <i class="fas fa-temperature-three-quarters"></i>
+                    <div class="stat-label">Temperature</div>
+                    <div class="stat-value" id="stat-temp">--°C</div>
+                </div>
+                <div class="stat-box">
+                    <i class="fas fa-microchip"></i>
+                    <div class="stat-label">CPU</div>
+                    <div class="stat-value" id="stat-cpu">-- %</div>
+                </div>
+                
+            </div>
+        </div>
+
+        <!-- MESSAGES SCREEN -->
+        <div class="screen" id="screen-messages" style="display: none;">
+            <!-- <div class="screen-title">
+                Message
+            </div> -->
+            <div id="message-display">
+                <p id="message-text">No messages</p>
+            </div>
+        </div>
+
+        <!-- COUNTDOWN SCREEN -->
+        <div class="screen" id="screen-countdown" style="display: none;">
+            <!-- <div class="screen-title">
+                Countdown
+            </div> -->
+            <div id="countdown-display">
+                <div id="countdown-name">Loading...</div>
+                <div id="countdown-timer">
+                    <span id="countdown-days">0</span>
+                    <span class="countdown-label">Days</span>
+                    <span id="countdown-hours">00</span>
+                    <span class="countdown-label">Hours</span>
+                    <span id="countdown-minutes">00</span>
+                    <span class="countdown-label">Minutes</span>
+                    <span id="countdown-seconds">00</span>
+                    <span class="countdown-label">Seconds</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- TODO SCREEN -->
+        <div class="screen" id="screen-todo" style="display: none;">
+            <div class="screen-title">Tasks</div>
+            <div id="todo-screen-container">
+                <ul id="todo-screen-list"></ul>
+                <div id="todo-screen-empty" style="display:none;">
+                    <div class="boxed">
+                        <i class="fas fa-check-circle" style="font-size:2.5em;display:block;margin-bottom:12px;"></i>
+                        <h1>
+                            All Done!
+                        </h1>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- EVENTS SCREEN -->
+        <div class="screen" id="screen-events" style="display: none;">
+            <div class="screen-title">Events</div>
+            <div id="events-screen-container">
+                <ul id="events-screen-list"></ul>
+                <div id="events-screen-empty" style="display:none;">
+                     <div class="boxed">
+                         <i class="fas fa-calendar" style="font-size:2.5em;display:block;margin-bottom:12px;"></i>
+                        <h1>
+                            No Upcoming Events
+                        </h1>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+<!-- TIMER SCREEN -->
+        <div class="screen" id="screen-timer" style="display: none;">
+            <!-- <div class="screen-title">
+                <span id="timer-screen-title">Timer</span>
+            </div> -->
+            <div id="timer-display">
+                <div id="timer-mode">Stopwatch</div>
+                <div id="timer-time">00:00:00</div>
+                <div id="timer-status"></div>
+            </div>
+        </div>
+
+        <!-- CAMERA SCREEN -->
+        <div class="screen" id="screen-camera" style="display: none;">
+            <div id="camera-container">
+                <div id="camera-stream-wrapper">
+                    <img id="camera-stream" src="" alt="">
+                    <div id="camera-offline" style="display: none;">
+                        <h3>Camera Offline</h3>
+                        <i class="fas fa-video-slash"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CELEBRATION OVERLAY -->
+    <div id="celebration-overlay" style="display: none;">
+        <div id="celebration-content">
+            <div class="celebration-icon">🎉</div>
+            <div class="celebration-title">TIME'S UP!</div>
+            <div class="celebration-message">Great work!</div>
+            <div class="confetti-container" id="confettiContainer"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+

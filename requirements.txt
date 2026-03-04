@@ -1,0 +1,31 @@
+# RPi Camera Object Detection Dependencies
+# Install with: pip3 install -r requirements.txt
+
+# OpenCV for image processing and object detection
+opencv-python>=4.5.0
+
+# NumPy for array operations
+numpy>=1.19.0
+
+# Pi Camera support:
+# -----------------
+# For Raspberry Pi 3B (Raspbian Buster or older):
+#   sudo apt install python3-picamera
+#   OR: pip3 install picamera
+#
+# For Raspberry Pi 4/5 (Raspberry Pi OS Bullseye or newer):
+#   sudo apt install python3-picamera2
+#
+# The script auto-detects which library is available.
+
+# Legacy picamera (for RPi 3B)
+# Uncomment if apt install didn't work:
+# picamera
+
+# Standard library modules (no install needed):
+# - http.server
+# - threading
+# - json
+# - argparse
+# - io
+# - time
