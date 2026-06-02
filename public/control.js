@@ -1177,11 +1177,19 @@ async function savePersonalisationSettings() {
 async function saveBackgroundSettings() {
     const backgroundQuery = document.getElementById('bgDefaultQuery').value.trim() || 'nature';
     const opacity = document.getElementById('bgOpacity').value;
+    const backgroundRefreshInterval = parseInt(document.getElementById('bgRefreshInterval').value);
+    const backgroundDim = parseInt(document.getElementById('bgDimSlider').value);
+    const backgroundBlur = parseInt(document.getElementById('bgBlurSlider').value);
     try {
         await fetch('/bg-settings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ query: backgroundQuery, opacity: parseFloat(opacity) })
+        });
+        await fetch('/extra-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ backgroundRefreshInterval, backgroundDim, backgroundBlur })
         });
         alert('✓ Background settings saved!');
     } catch (e) {
@@ -1337,20 +1345,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-    const backgroundRefreshInterval = parseInt(document.getElementById('bgRefreshInterval').value);
-    const backgroundDim = parseInt(document.getElementById('bgDimSlider').value);
-    const backgroundBlur = parseInt(document.getElementById('bgBlurSlider').value);
-    try {
-        await fetch('/extra-settings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ backgroundQuery, backgroundRefreshInterval, backgroundDim, backgroundBlur })
-        });
-        alert('✓ Background settings saved!');
-    } catch (e) {
-        alert('Failed to save background settings');
-    }
-}
 
 // Save theme settings
 async function saveThemeSettings() {
