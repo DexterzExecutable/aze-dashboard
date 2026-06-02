@@ -27,33 +27,16 @@ const defaultSettings = {
     countdownData: null,
     currentBackground: 'gradient',
     screenConfig: {
-        screens: { home: true, weather: false, news: false, stats: false, messages: false, countdown: false, timer: false, todo: false, events: false, camera: false },
+        screens: { home: true, weather: false, news: false, stats: false, messages: false, countdown: false, timer: false, todo: false, events: false },
         cycleDuration: 5,
         clickToSwitch: true,
-        screenOrder: ['home', 'weather', 'news', 'stats', 'messages', 'countdown', 'timer', 'todo', 'events', 'camera']
+        screenOrder: ['home', 'weather', 'news', 'stats', 'messages', 'countdown', 'timer', 'todo', 'events']
     },
     timerState: { mode: 'stopwatch', time: 0, running: false, pomodoroMode: 'work', pomodoroWork: 1500, pomodoroBreak: 300 },
     displaySettings: { clockFormat: '12', dateFormat: 'DMY', tempUnit: 'C', showTodos: false, showEvents: false },
     extraSettings: { greetingName: '', weatherLocation: '', backgroundQuery: 'nature', backgroundRefreshInterval: 60, accentColor: '#4285f4', fontFamily: 'Orbitron', backgroundBlur: 0, backgroundDim: 0 },
     notificationSettings: { celebrationEnabled: true, celebrationDuration: 5, soundEnabled: false },
     newsSettings: { headlineCount: 6, scrollSpeed: 10, fontSize: 'large', textAlign: 'left', opacity: 90, showSource: true, showIndicator: true, showAnimation: false },
-    cameraSettings: {
-        enabled: false,
-        resolution: '320x240',
-        fps: 30,
-        rotation: 0,
-        objectDetection: false,
-        detectionModel: 'mobilenet_ssd',
-        confidenceThreshold: 0.5,
-        showLabels: true,
-        showFps: true,
-        flipHorizontal: false,
-        flipVertical: false,
-        brightness: 100,
-        contrast: 100,
-        autoStart: false,
-        streamPort: parseInt(CAMERA_STREAM_PORT) || 8081
-    },
     customPresets: []
 };
 
@@ -168,23 +151,9 @@ let displaySettings = loadedSettings.displaySettings || defaultSettings.displayS
 let extraSettings = loadedSettings.extraSettings || defaultSettings.extraSettings;
 let notificationSettings = loadedSettings.notificationSettings || defaultSettings.notificationSettings;
 let newsSettings = loadedSettings.newsSettings || defaultSettings.newsSettings;
-let cameraSettings = loadedSettings.cameraSettings || defaultSettings.cameraSettings;
 let customPresets = loadedSettings.customPresets || [];
 
-// Ensure camera screen is in screenConfig
-if (!screenConfig.screens.hasOwnProperty('camera')) {
-    screenConfig.screens.camera = false;
-}
-if (!screenConfig.screenOrder.includes('camera')) {
-    screenConfig.screenOrder.push('camera');
-}
-
 console.log('Settings loaded from', SETTINGS_FILE);
-
-// Start camera if autoStart is enabled
-if (cameraSettings.autoStart && cameraSettings.enabled) {
-    startCameraProcess();
-}
 
 function startCameraProcess() {
     if (cameraProcess) {
@@ -992,6 +961,8 @@ setInterval(() => {
 // RSS Feed updater
 async function updateNewsItems() {
     newsItems = [];
+    const seenLinks = new Set(); // Track seen article links to avoid duplicates
+    
     for (const feed of newsFeeds) {
         try {
             const parsed = await rssParser.parseURL(feed.url);
@@ -1001,13 +972,25 @@ async function updateNewsItems() {
                 link: item.link,
                 pubDate: item.pubDate
             }));
-            newsItems.push(...items);
+            
+            // Only add items we haven't seen before (by link)
+            for (const item of items) {
+                if (item.link && !seenLinks.has(item.link)) {
+                    newsItems.push(item);
+                    seenLinks.add(item.link);
+                } else if (!item.link && !newsItems.some(ni => ni.title === item.title)) {
+                    // Fallback to title deduplication if link is missing
+                    newsItems.push(item);
+                }
+            }
         } catch (e) {
             console.error(`Failed to fetch RSS feed: ${feed.name}`, e.message);
         }
     }
-    // Sort by date
+    
+    // Sort by date and limit to reasonable number
     newsItems.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+    newsItems = newsItems.slice(0, 50); // Limit to 50 unique articles
     io.emit('newsItems', newsItems);
 }
 

@@ -21,7 +21,6 @@ function switchTab(tabName) {
     if (tabName === 'messages') loadCurrentMessage();
     if (tabName === 'countdown') loadCountdownData();
     if (tabName === 'screens') loadScreenConfig();
-    if (tabName === 'camera') loadCameraSettings();
 }
 
 // Screen Config
@@ -40,8 +39,7 @@ const screenLabels = {
     countdown: { name: 'Countdown', icon: 'fa-hourglass-half' },
     timer: { name: 'Timer', icon: 'fa-stopwatch' },
     todo: { name: 'To-Dos', icon: 'fa-tasks' },
-    events: { name: 'Events', icon: 'fa-calendar-alt' },
-    camera: { name: 'Camera', icon: 'fa-video' }
+    events: { name: 'Events', icon: 'fa-calendar-alt' }
 };
 
 async function loadScreenConfig() {
@@ -1240,201 +1238,10 @@ async function loadDisplaySettings() {
     }
 }
 
-// ===== CAMERA FUNCTIONS =====
-let cameraSettings = {};
 
-async function loadCameraSettings() {
-    try {
-        const res = await fetch('/camera-settings');
-        cameraSettings = await res.json();
-        
-        // Populate form fields
-        if (cameraSettings.resolution) {
-            const resSelect = document.getElementById('cameraResolution');
-            if (resSelect) resSelect.value = cameraSettings.resolution;
-        }
-        if (cameraSettings.fps) {
-            const fpsSelect = document.getElementById('cameraFps');
-            if (fpsSelect) fpsSelect.value = cameraSettings.fps.toString();
-        }
-        if (cameraSettings.rotation !== undefined) {
-            const rotSelect = document.getElementById('cameraRotation');
-            if (rotSelect) rotSelect.value = cameraSettings.rotation.toString();
-        }
-        if (cameraSettings.flipHorizontal !== undefined) {
-            const flipH = document.getElementById('cameraFlipH');
-            if (flipH) flipH.checked = cameraSettings.flipHorizontal;
-        }
-        if (cameraSettings.flipVertical !== undefined) {
-            const flipV = document.getElementById('cameraFlipV');
-            if (flipV) flipV.checked = cameraSettings.flipVertical;
-        }
-        if (cameraSettings.objectDetection !== undefined) {
-            const objDetect = document.getElementById('cameraObjectDetection');
-            if (objDetect) objDetect.checked = cameraSettings.objectDetection;
-        }
-        if (cameraSettings.detectionModel) {
-            const modelSelect = document.getElementById('cameraDetectionModel');
-            if (modelSelect) modelSelect.value = cameraSettings.detectionModel;
-        }
-        if (cameraSettings.confidenceThreshold !== undefined) {
-            const confSlider = document.getElementById('cameraConfidence');
-            const confValue = document.getElementById('cameraConfidenceValue');
-            if (confSlider) confSlider.value = Math.round(cameraSettings.confidenceThreshold * 100);
-            if (confValue) confValue.textContent = Math.round(cameraSettings.confidenceThreshold * 100);
-        }
-        if (cameraSettings.showLabels !== undefined) {
-            const showLabels = document.getElementById('cameraShowLabels');
-            if (showLabels) showLabels.checked = cameraSettings.showLabels;
-        }
-        if (cameraSettings.showFps !== undefined) {
-            const showFps = document.getElementById('cameraShowFps');
-            if (showFps) showFps.checked = cameraSettings.showFps;
-        }
-        if (cameraSettings.autoStart !== undefined) {
-            const autoStart = document.getElementById('cameraAutoStart');
-            if (autoStart) autoStart.checked = cameraSettings.autoStart;
-        }
-        if (cameraSettings.streamPort) {
-            const portInput = document.getElementById('cameraStreamPort');
-            if (portInput) portInput.value = cameraSettings.streamPort;
-        }
-        
-        // Refresh camera status
-        await refreshCameraStatus();
-    } catch (e) {
-        console.error('Failed to load camera settings', e);
-    }
-}
-
-async function saveCameraSettings() {
-    const settings = {
-        resolution: document.getElementById('cameraResolution').value,
-        fps: parseInt(document.getElementById('cameraFps').value),
-        rotation: parseInt(document.getElementById('cameraRotation').value),
-        flipHorizontal: document.getElementById('cameraFlipH').checked,
-        flipVertical: document.getElementById('cameraFlipV').checked,
-        objectDetection: document.getElementById('cameraObjectDetection').checked,
-        detectionModel: document.getElementById('cameraDetectionModel').value,
-        confidenceThreshold: parseInt(document.getElementById('cameraConfidence').value) / 100,
-        showLabels: document.getElementById('cameraShowLabels').checked,
-        showFps: document.getElementById('cameraShowFps').checked,
-        autoStart: document.getElementById('cameraAutoStart').checked,
-        streamPort: parseInt(document.getElementById('cameraStreamPort').value)
-    };
-    
-    try {
-        const res = await fetch('/camera-settings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(settings)
-        });
-        
-        if (res.ok) {
-            alert('✓ Camera settings saved! Restart camera for changes to take effect.');
-            cameraSettings = { ...cameraSettings, ...settings };
-        } else {
-            alert('Failed to save camera settings');
-        }
-    } catch (e) {
-        alert('Failed to save camera settings');
-    }
-}
-
-async function startCamera() {
-    try {
-        const res = await fetch('/camera/start', { method: 'POST' });
-        if (res.ok) {
-            alert('✓ Camera started!');
-            // Wait longer for camera to initialize before showing preview
-            setTimeout(refreshCameraStatus, 3000);
-        } else {
-            alert('Failed to start camera. Make sure picamera2 and opencv are installed.');
-        }
-    } catch (e) {
-        alert('Failed to start camera');
-    }
-}
-
-async function stopCamera() {
-    try {
-        const res = await fetch('/camera/stop', { method: 'POST' });
-        if (res.ok) {
-            alert('✓ Camera stopped');
-            refreshCameraStatus();
-        }
-    } catch (e) {
-        alert('Failed to stop camera');
-    }
-}
-
-async function refreshCameraStatus() {
-    const indicator = document.getElementById('cameraStatusIndicator');
-    const statusText = document.getElementById('cameraStatusText');
-    const preview = document.getElementById('cameraPreview');
-    const placeholder = document.getElementById('cameraPreviewPlaceholder');
-    
-    try {
-        const res = await fetch('/camera/status');
-        const status = await res.json();
-        
-        if (status.running) {
-            if (indicator) indicator.style.background = '#34a853';
-            if (statusText) statusText.textContent = 'Camera Online';
-            if (preview) {
-                // Build stream URL using current page's hostname (not localhost from server)
-                const streamHost = window.location.hostname;
-                const streamPort = status.settings?.streamPort || 8081;
-                const streamUrl = `http://${streamHost}:${streamPort}/stream.mjpg`;
-                
-                // Only set src if not already streaming
-                if (!preview.src.includes(streamUrl.split('?')[0])) {
-                    // Add error handler for the preview image
-                    preview.onerror = () => {
-                        console.log('Preview failed to load');
-                        if (placeholder) placeholder.style.display = 'block';
-                        preview.style.display = 'none';
-                    };
-                    
-                    preview.onload = () => {
-                        preview.style.display = 'block';
-                        if (placeholder) placeholder.style.display = 'none';
-                    };
-                    
-                    preview.src = streamUrl + '?t=' + Date.now();
-                }
-                preview.style.display = 'block';
-            }
-            if (placeholder) placeholder.style.display = 'none';
-        } else {
-            if (indicator) indicator.style.background = '#ea4335';
-            if (statusText) statusText.textContent = 'Camera Offline';
-            if (preview) {
-                preview.src = '';
-                preview.style.display = 'none';
-            }
-            if (placeholder) placeholder.style.display = 'block';
-        }
-    } catch (e) {
-        if (indicator) indicator.style.background = '#ea4335';
-        if (statusText) statusText.textContent = 'Camera Offline';
-        if (preview) preview.style.display = 'none';
-        if (placeholder) placeholder.style.display = 'block';
-    }
-}
-
-// Listen for camera settings updates
-socket.on('cameraSettings', (data) => {
-    cameraSettings = data;
-});
 
 // Initialize
 loadScreenConfig();
 loadCustomPresets();
 loadExtraSettings();
 loadDisplaySettings();
-loadCameraSettings();
-
-// Check camera status on page load and periodically
-setTimeout(refreshCameraStatus, 1000);
-setInterval(refreshCameraStatus, 5000);  // Refresh every 5 seconds

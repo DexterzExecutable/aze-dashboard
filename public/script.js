@@ -583,7 +583,6 @@ function showScreen(screenName) {
     // Load data for screens that need it
     if (screenName === 'todo') loadTodoScreen();
     if (screenName === 'events') loadEventsScreen();
-    if (screenName === 'camera') loadCameraScreen();
     
     console.log(`Showing screen: ${screenName}`);
 }
@@ -634,7 +633,7 @@ function setupClickToSwitch() {
 }
 
 // All known screens in order — used for tap-cycling even when only 1 is "enabled"
-const allScreenOrder = ['home', 'weather', 'news', 'stats', 'messages', 'countdown', 'timer', 'todo', 'events', 'camera'];
+const allScreenOrder = ['home', 'weather', 'news', 'stats', 'messages', 'countdown', 'timer', 'todo', 'events'];
 
 function onScreenClick(e) {
     // Ignore clicks on interactive elements (buttons, inputs, links, todo items)
@@ -1222,98 +1221,7 @@ async function loadEventsScreen() {
     }
 }
 
-// ===== CAMERA SCREEN =====
-let cameraSettings = {};
-let cameraStreamActive = false;
 
-async function loadCameraSettings() {
-    try {
-        const res = await fetch('/camera-settings');
-        cameraSettings = await res.json();
-    } catch (e) {
-        console.error('Failed to load camera settings:', e);
-    }
-}
-
-async function loadCameraScreen() {
-    const streamImg = document.getElementById('camera-stream');
-    const offlineDiv = document.getElementById('camera-offline');
-    const statusText = document.getElementById('camera-status-text');
-    
-    if (!streamImg || !offlineDiv) return;
-    
-    try {
-        const res = await fetch('/camera/status');
-        const status = await res.json();
-        
-        if (status.running) {
-            // Camera is running, show stream
-            streamImg.style.display = 'block';
-            offlineDiv.style.display = 'none';
-            
-            // Build stream URL using the current page's hostname (not localhost)
-            const streamHost = window.location.hostname;
-            const streamPort = status.settings?.streamPort || 8081;
-            const streamUrl = `http://${streamHost}:${streamPort}/stream.mjpg`;
-            
-            // Set stream source with cache buster to force reload
-            if (!cameraStreamActive || !streamImg.src.includes(streamUrl)) {
-                streamImg.src = streamUrl + '?t=' + Date.now();
-                cameraStreamActive = true;
-            }
-            
-            // Update status text
-            if (statusText) {
-                if (status.settings && status.settings.objectDetection) {
-                    statusText.innerHTML = '<i class="fas fa-brain" style="margin-right: 8px; color: #34a853;"></i>Object Detection Active';
-                } else {
-                    statusText.innerHTML = '<i class="fas fa-video" style="margin-right: 8px; color: #4285f4;"></i>Live Stream';
-                }
-            }
-        } else {
-            // Camera is offline
-            streamImg.style.display = 'none';
-            offlineDiv.style.display = 'block';
-            cameraStreamActive = false;
-            
-            if (statusText) {
-                statusText.innerHTML = '<i class="fas fa-video-slash" style="margin-right: 8px; color: #ea4335;"></i>Camera Offline';
-            }
-        }
-    } catch (e) {
-        console.error('Camera status error:', e);
-        streamImg.style.display = 'none';
-        offlineDiv.style.display = 'block';
-        cameraStreamActive = false;
-        
-        if (statusText) {
-            statusText.innerHTML = '<i class="fas fa-exclamation-triangle" style="margin-right: 8px; color: #fbbc04;"></i>Connection Error';
-        }
-    }
-}
-
-// Handle camera stream errors
-document.addEventListener('DOMContentLoaded', () => {
-    const streamImg = document.getElementById('camera-stream');
-    if (streamImg) {
-        streamImg.onerror = () => {
-            streamImg.style.display = 'none';
-            const offlineDiv = document.getElementById('camera-offline');
-            if (offlineDiv) offlineDiv.style.display = 'block';
-            cameraStreamActive = false;
-        };
-    }
-});
-
-// Listen for camera settings updates
-socket.on('cameraSettings', (data) => {
-    cameraSettings = data;
-    // Reload camera screen if it's currently visible
-    const cameraScreen = document.getElementById('screen-camera');
-    if (cameraScreen && cameraScreen.style.display !== 'none') {
-        loadCameraScreen();
-    }
-});
 
 // Initialize everything — extra settings first so location/greeting/bg are ready
 loadAndApplyExtraSettings().then(async () => {
@@ -1352,7 +1260,6 @@ loadTimerState();
 loadNotificationSettings();
 loadDisplaySettings();
 loadNewsSettings();
-loadCameraSettings();
 
 // Periodic updates
 setInterval(loadNewsItems, 5 * 60 * 1000); // Every 5 minutes
@@ -1360,11 +1267,3 @@ setInterval(loadFullWeather, 10 * 60 * 1000); // Every 10 minutes
 setInterval(loadCurrentMessage, 30 * 1000); // Every 30 seconds
 setInterval(loadCountdown, 60 * 1000); // Every minute
 setInterval(loadTimerState, 2 * 1000); // Every 2 seconds
-
-// Refresh camera status when camera screen is visible
-setInterval(() => {
-    const cameraScreen = document.getElementById('screen-camera');
-    if (cameraScreen && cameraScreen.style.display !== 'none') {
-        loadCameraScreen();
-    }
-}, 5000); // Every 5 seconds
