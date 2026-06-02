@@ -38,6 +38,9 @@
         <button class="tab" onclick="switchTab('timer')">
             <i class="fas fa-stopwatch"></i> Timer
         </button>
+        <button class="tab" onclick="switchTab('screensaver')">
+            <i class="fas fa-image"></i> Screensaver
+        </button>
         <button class="tab" onclick="switchTab('presets')">
             <i class="fas fa-magic"></i> Presets
         </button>
@@ -547,6 +550,85 @@
                             <i class="fas fa-redo"></i> Reset
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREENSAVER TAB -->
+        <div id="tab-screensaver" class="tab-content" style="display: none;">
+            <div class="section">
+                <h2><i class="fas fa-image"></i> Gallery Screensaver</h2>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="screensaverEnabled" style="width: auto; margin-right: 8px;" onchange="saveScreensaverSettings()">
+                        Enable Gallery Screensaver
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label>Speed (1 = Slow, 10 = Fast)</label>
+                    <input type="range" id="screensaverSpeed" min="1" max="10" value="5" style="width: 100%;" onchange="saveScreensaverSettings()">
+                    <div style="font-size: 0.85em; color: rgba(227, 227, 227, 0.6); margin-top: 5px;" id="speedLabel">5</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Animation Type</label>
+                    <select id="screensaverAnimation" onchange="saveScreensaverSettings()" style="width: 100%; padding: 8px; border: 1px solid #555; background: #222; color: #e3e3e3; border-radius: 4px;">
+                        <option value="fade">Fade</option>
+                        <option value="slideLeft">Slide Left</option>
+                        <option value="slideRight">Slide Right</option>
+                        <option value="slideUp">Slide Up</option>
+                        <option value="slideDown">Slide Down</option>
+                        <option value="zoom">Zoom In</option>
+                        <option value="zoomOut">Zoom Out</option>
+                        <option value="rotate">Rotate</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="screensaverShowTime" style="width: auto; margin-right: 8px;" onchange="saveScreensaverSettings()">
+                        Display Time on Images
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label>Time Format</label>
+                    <select id="screensaverTimeFormat" onchange="saveScreensaverSettings()" style="width: 100%; padding: 8px; border: 1px solid #555; background: #222; color: #e3e3e3; border-radius: 4px;">
+                        <option value="12">12-Hour (AM/PM)</option>
+                        <option value="24">24-Hour</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Auto-start After Inactivity (minutes, 0 = disabled)</label>
+                    <input type="number" id="screensaverAutoStart" min="0" max="120" value="0" style="width: 100%;" onchange="saveScreensaverSettings()">
+                </div>
+
+                <button class="btn" onclick="loadScreensaverSettings()" style="width: 100%; margin-top: 10px;">
+                    <i class="fas fa-sync"></i> Save Settings
+                </button>
+            </div>
+
+            <div class="section">
+                <h2><i class="fas fa-upload"></i> Upload Photos</h2>
+                <div class="form-group">
+                    <label>Select Photos (Up to 50)</label>
+                    <input type="file" id="screensaverPhotoInput" multiple accept="image/*" style="display: block; width: 100%; margin-bottom: 10px; padding: 8px; border: 1px dashed #555; border-radius: 4px; background: #1a1a1a; color: #e3e3e3; cursor: pointer;">
+                </div>
+                <button class="btn" onclick="uploadScreensaverPhotos()" style="width: 100%; margin-bottom: 15px;">
+                    <i class="fas fa-upload"></i> Upload Photos
+                </button>
+            </div>
+
+            <div class="section">
+                <h2><i class="fas fa-images"></i> Photo Gallery</h2>
+                <div id="screensaverGalleryList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-bottom: 15px;"></div>
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn btn-danger" onclick="deleteAllScreensaverImages()" style="flex: 1;">
+                        <i class="fas fa-trash"></i> Delete All
+                    </button>
                 </div>
             </div>
         </div>

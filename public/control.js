@@ -21,6 +21,7 @@ function switchTab(tabName) {
     if (tabName === 'messages') loadCurrentMessage();
     if (tabName === 'countdown') loadCountdownData();
     if (tabName === 'screens') loadScreenConfig();
+    if (tabName === 'screensaver') loadScreensaverSettings();
 }
 
 // Screen Config
@@ -264,6 +265,13 @@ async function deleteTodo(index) {
 socket.on('todos', (data) => {
     todos = data;
     renderTodos();
+});
+
+socket.on('screensaverSettings', async (data) => {
+    // Update form when settings change from another device
+    if (document.getElementById('tab-screensaver').style.display !== 'none') {
+        await loadScreensaverSettings();
+    }
 });
 
 // Events
@@ -1168,6 +1176,167 @@ async function savePersonalisationSettings() {
 // Save background settings
 async function saveBackgroundSettings() {
     const backgroundQuery = document.getElementById('bgDefaultQuery').value.trim() || 'nature';
+    const opacity = document.getElementById('bgOpacity').value;
+    try {
+        await fetch('/bg-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: backgroundQuery, opacity: parseFloat(opacity) })
+        });
+        alert('✓ Background settings saved!');
+    } catch (e) {
+        alert('Failed to save background settings');
+    }
+}
+
+// === SCREENSAVER FUNCTIONS ===
+
+async function loadScreensaverSettings() {
+    try {
+        const res = await fetch('/screensaver-settings');
+        const settings = await res.json();
+        
+        document.getElementById('screensaverEnabled').checked = settings.enabled;
+        document.getElementById('screensaverSpeed').value = settings.speed;
+        document.getElementById('speedLabel').textContent = settings.speed;
+        document.getElementById('screensaverAnimation').value = settings.animation;
+        document.getElementById('screensaverShowTime').checked = settings.showTime;
+        document.getElementById('screensaverTimeFormat').value = settings.timeFormat;
+        document.getElementById('screensaverAutoStart').value = settings.autoStartAfter;
+        
+        await renderScreensaverGallery();
+    } catch (e) {
+        console.error('Failed to load screensaver settings', e);
+    }
+}
+
+async function saveScreensaverSettings() {
+    try {
+        const settings = {
+            enabled: document.getElementById('screensaverEnabled').checked,
+            speed: parseInt(document.getElementById('screensaverSpeed').value),
+            animation: document.getElementById('screensaverAnimation').value,
+            showTime: document.getElementById('screensaverShowTime').checked,
+            timeFormat: document.getElementById('screensaverTimeFormat').value,
+            autoStartAfter: parseInt(document.getElementById('screensaverAutoStart').value)
+        };
+        
+        await fetch('/screensaver-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings)
+        });
+        
+        console.log('✓ Screensaver settings saved');
+    } catch (e) {
+        console.error('Failed to save screensaver settings', e);
+    }
+}
+
+async function uploadScreensaverPhotos() {
+    const input = document.getElementById('screensaverPhotoInput');
+    if (!input.files || input.files.length === 0) {
+        alert('Please select photos first');
+        return;
+    }
+    
+    const formData = new FormData();
+    for (let i = 0; i < input.files.length; i++) {
+        formData.append('photos', input.files[i]);
+    }
+    
+    try {
+        const res = await fetch('/screensaver-upload', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (res.ok) {
+            alert(`✓ ${input.files.length} photo(s) uploaded!`);
+            input.value = '';
+            await renderScreensaverGallery();
+            await loadGalleryImages();
+        } else {
+            alert('Failed to upload photos');
+        }
+    } catch (e) {
+        console.error('Upload failed', e);
+        alert('Upload error');
+    }
+}
+
+async function renderScreensaverGallery() {
+    try {
+        const res = await fetch('/screensaver-images');
+        const data = await res.json();
+        const list = document.getElementById('screensaverGalleryList');
+        
+        if (!data.images || data.images.length === 0) {
+            list.innerHTML = '<div style=\"grid-column: 1/-1; text-align: center; color: rgba(227, 227, 227, 0.6); padding: 30px;\">No photos uploaded yet</div>';
+            return;
+        }
+        
+        list.innerHTML = data.images.map(img => `
+            <div style=\"position: relative; background: #222; border-radius: 4px; overflow: hidden; aspect-ratio: 1;\">
+                <img src=\"${img.url}\" alt=\"\" style=\"width: 100%; height: 100%; object-fit: cover;\">
+                <button class=\"btn btn-danger\" onclick=\"deleteScreensaverImage('${img.name}')\" style=\"position: absolute; top: 5px; right: 5px; padding: 4px 8px; font-size: 0.8em;\">
+                    <i class=\"fas fa-trash\"></i>
+                </button>
+            </div>
+        `).join('');
+    } catch (e) {
+        console.error('Failed to render gallery', e);
+    }
+}
+
+async function deleteScreensaverImage(filename) {
+    if (!confirm(`Delete ${filename}?`)) return;
+    
+    try {
+        const res = await fetch(`/screensaver-images/${filename}`, {
+            method: 'DELETE'
+        });
+        
+        if (res.ok) {
+            await renderScreensaverGallery();
+            await loadGalleryImages();
+        } else {
+            alert('Failed to delete image');
+        }
+    } catch (e) {
+        console.error('Delete failed', e);
+    }
+}
+
+async function deleteAllScreensaverImages() {
+    if (!confirm('Delete ALL photos? This cannot be undone!')) return;
+    
+    try {
+        const res = await fetch('/screensaver-images-all', {
+            method: 'DELETE'
+        });
+        
+        if (res.ok) {
+            await renderScreensaverGallery();
+            await loadGalleryImages();
+            alert('✓ All photos deleted!');
+        } else {
+            alert('Failed to delete photos');
+        }
+    } catch (e) {
+        console.error('Delete all failed', e);
+    }
+}
+
+// Update speed label when slider changes
+document.addEventListener('DOMContentLoaded', () => {
+    const speedSlider = document.getElementById('screensaverSpeed');
+    if (speedSlider) {
+        speedSlider.addEventListener('input', (e) => {
+            document.getElementById('speedLabel').textContent = e.target.value;
+        });
+    }
+});
     const backgroundRefreshInterval = parseInt(document.getElementById('bgRefreshInterval').value);
     const backgroundDim = parseInt(document.getElementById('bgDimSlider').value);
     const backgroundBlur = parseInt(document.getElementById('bgBlurSlider').value);

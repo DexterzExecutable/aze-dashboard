@@ -443,89 +443,192 @@ setInterval(updateClock, 1000);
 updateClock();
 
 let screensaverActive = false;
+let screensaverSettings = { enabled: false, speed: 5, animation: 'fade', showTime: false, showNoon: false, timeFormat: '12', autoStartAfter: 0 };
+let galleryImages = [];
+let currentGalleryIndex = 0;
+let galleryInterval = null;
 
 socket.on("screensaver", (data) => {
     screensaverActive = data.active;
     updateScreensaverMode();
 });
 
+socket.on('screensaverSettings', (data) => {
+    screensaverSettings = data;
+});
+
+async function loadScreensaverSettings() {
+    try {
+        const res = await fetch('/screensaver-settings');
+        screensaverSettings = await res.json();
+    } catch (e) {
+        console.error('Failed to load screensaver settings', e);
+    }
+}
+
+async function loadGalleryImages() {
+    try {
+        const res = await fetch('/screensaver-images');
+        const data = await res.json();
+        galleryImages = data.images || [];
+    } catch (e) {
+        console.error('Failed to load gallery images', e);
+    }
+}
+
 function updateScreensaverMode() {
     const body = document.body;
     const screenContainer = document.getElementById("screenContainer");
-    const clockContainer = document.getElementById("clock-container");
+    const gallery = document.getElementById("screensaver-gallery");
+    const dimOverlay = document.getElementById("dimOverlay");
 
     if (screensaverActive) {
-        body.style.backgroundColor = "#000";
-        body.style.backgroundImage = "none";
-
-        // Hide screen container completely
-        if (screenContainer) {
-            screenContainer.style.display = "none";
-        }
-
-        const dimOverlay = document.getElementById("dimOverlay");
-        if (dimOverlay) {
-            dimOverlay.style.opacity = 0;
-        }
-
-        // Create or show screensaver clock
-        let screensaverClock = document.getElementById("screensaver-clock");
-        if (!screensaverClock) {
-            screensaverClock = document.createElement("div");
-            screensaverClock.id = "screensaver-clock";
-            screensaverClock.style.cssText = `
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                font-family: 'LCD', 'Orbitron', sans-serif;
-                font-size: 8vw;
-                color: #fff;
-                z-index: 2000;
-                text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0px 0px 15px rgba(0,0,0,1);
-            `;
-            body.appendChild(screensaverClock);
+        // Check if we should use gallery mode
+        if (screensaverSettings.enabled && galleryImages.length > 0) {
+            // Gallery screensaver mode
+            if (screenContainer) screenContainer.style.display = "none";
+            if (dimOverlay) dimOverlay.style.opacity = 0;
+            if (gallery) {
+                gallery.style.display = "flex";
+                startGallerySlideshow();
+            }
         } else {
-            screensaverClock.style.display = "block";
-        }
+            // Classic clock screensaver mode
+            body.style.backgroundColor = "#000";
+            body.style.backgroundImage = "none";
+            if (gallery) gallery.style.display = "none";
+            if (screenContainer) screenContainer.style.display = "none";
+            if (dimOverlay) dimOverlay.style.opacity = 0;
 
-        // Update screensaver clock
-        function updateScreensaverClock() {
-            if (!screensaverActive) return;
-            const now = new Date();
-            let hours = now.getHours();
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const ampm = hours >= 12 ? 'PM' : 'AM';
-            hours = hours % 12 || 12;
-            screensaverClock.textContent = `${hours}:${minutes} ${ampm}`;
-        }
-        updateScreensaverClock();
-        if (!window.screensaverClockInterval) {
-            window.screensaverClockInterval = setInterval(updateScreensaverClock, 1000);
+            // Create or show screensaver clock
+            let screensaverClock = document.getElementById("screensaver-clock");
+            if (!screensaverClock) {
+                screensaverClock = document.createElement("div");
+                screensaverClock.id = "screensaver-clock";
+                screensaverClock.style.cssText = `
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    font-family: 'LCD', 'Orbitron', sans-serif;
+                    font-size: 8vw;
+                    color: #fff;
+                    z-index: 2000;
+                    text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0px 0px 15px rgba(0,0,0,1);
+                `;
+                body.appendChild(screensaverClock);
+            } else {
+                screensaverClock.style.display = "block";
+            }
+
+            // Update screensaver clock
+            function updateScreensaverClock() {
+                if (!screensaverActive) return;
+                const now = new Date();
+                let hours = now.getHours();
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12 || 12;
+                screensaverClock.textContent = `${hours}:${minutes} ${ampm}`;
+            }
+            updateScreensaverClock();
+            if (!window.screensaverClockInterval) {
+                window.screensaverClockInterval = setInterval(updateScreensaverClock, 1000);
+            }
         }
     } else {
         // Restore everything
         body.style.backgroundColor = "";
         body.style.backgroundImage = "";
-        
-        // Show screen container
-        if (screenContainer) {
-            screenContainer.style.display = "";
-        }
+        if (gallery) gallery.style.display = "none";
+        if (screenContainer) screenContainer.style.display = "";
 
         // Hide screensaver clock
         const screensaverClock = document.getElementById("screensaver-clock");
-        if (screensaverClock) {
-            screensaverClock.style.display = "none";
-        }
+        if (screensaverClock) screensaverClock.style.display = "none";
 
         if (window.screensaverClockInterval) {
             clearInterval(window.screensaverClockInterval);
             window.screensaverClockInterval = null;
         }
         
+        if (galleryInterval) {
+            clearInterval(galleryInterval);
+            galleryInterval = null;
+        }
+        
         updateBackground();
     }
+}
+
+function startGallerySlideshow() {
+    if (!galleryImages.length) return;
+    
+    const galleryImage = document.getElementById('gallery-image');
+    const timeOverlay = document.getElementById('gallery-time-overlay');
+    const timeDisplay = document.getElementById('gallery-time-display');
+    
+    if (screensaverSettings.showTime && timeOverlay) {
+        timeOverlay.style.display = 'block';
+    } else if (timeOverlay) {
+        timeOverlay.style.display = 'none';
+    }
+    
+    // Display first image
+    currentGalleryIndex = 0;
+    displayGalleryImage();
+    
+    // Clear existing interval
+    if (galleryInterval) clearInterval(galleryInterval);
+    
+    // Set up auto-advance
+    const speedMs = (11 - screensaverSettings.speed) * 1000; // Convert 1-10 to seconds
+    galleryInterval = setInterval(() => {
+        if (screensaverActive && galleryImages.length > 0) {
+            currentGalleryIndex = (currentGalleryIndex + 1) % galleryImages.length;
+            displayGalleryImage();
+        }
+    }, speedMs);
+    
+    // Update time display
+    if (screensaverSettings.showTime && timeDisplay) {
+        if (!window.galleryTimeInterval) {
+            window.galleryTimeInterval = setInterval(() => {
+                if (!screensaverActive) return;
+                const now = new Date();
+                let hours = now.getHours();
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                if (screensaverSettings.timeFormat === '12') {
+                    const ampm = hours >= 12 ? 'PM' : 'AM';
+                    hours = hours % 12 || 12;
+                    timeDisplay.textContent = `${hours}:${minutes} ${ampm}`;
+                } else {
+                    hours = String(hours).padStart(2, '0');
+                    timeDisplay.textContent = `${hours}:${minutes}`;
+                }
+            }, 1000);
+        }
+    }
+}
+
+function displayGalleryImage() {
+    const galleryImage = document.getElementById('gallery-image');
+    
+    if (!galleryImage || !galleryImages[currentGalleryIndex]) return;
+    
+    const image = galleryImages[currentGalleryIndex];
+    
+    // Remove animation to reset it
+    galleryImage.style.animation = 'none';
+    
+    // Trigger reflow to restart animation
+    setTimeout(() => {
+        const animationName = screensaverSettings.animation || 'fade';
+        const duration = (11 - screensaverSettings.speed) * 0.5; // 0.5s to 5s
+        galleryImage.style.animation = `${animationName} ${duration}s ease`;
+    }, 50);
+    
+    galleryImage.src = image.url;
 }
 
 // ===== SCREEN CYCLING SYSTEM =====
@@ -1253,6 +1356,8 @@ loadAndApplyExtraSettings().then(async () => {
 
 loadScreenConfig();
 loadNewsItems();
+loadScreensaverSettings();
+loadGalleryImages();
 loadFullWeather();
 loadCurrentMessage();
 loadCountdown();

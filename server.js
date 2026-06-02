@@ -37,6 +37,15 @@ const defaultSettings = {
     extraSettings: { greetingName: '', weatherLocation: '', backgroundQuery: 'nature', backgroundRefreshInterval: 60, accentColor: '#4285f4', fontFamily: 'Orbitron', backgroundBlur: 0, backgroundDim: 0 },
     notificationSettings: { celebrationEnabled: true, celebrationDuration: 5, soundEnabled: false },
     newsSettings: { headlineCount: 6, scrollSpeed: 10, fontSize: 'large', textAlign: 'left', opacity: 90, showSource: true, showIndicator: true, showAnimation: false },
+    screensaverSettings: {
+        enabled: false,
+        speed: 5,
+        animation: 'fade',
+        showTime: false,
+        showNoon: false,
+        timeFormat: '12',
+        autoStartAfter: 0 // minutes of inactivity, 0 = disabled
+    },
     customPresets: []
 };
 
@@ -129,6 +138,35 @@ const upload = multer({
     }
 });
 
+// Configure multer for screensaver uploads
+const screensaverStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadDir = path.join(__dirname, 'public', 'screensaver-images');
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        cb(null, 'screensaver-' + Date.now() + path.extname(file.originalname));
+    }
+});
+
+const screensaverUpload = multer({ 
+    storage: screensaverStorage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    fileFilter: function (req, file, cb) {
+        const filetypes = /jpeg|jpg|png|gif|webp/;
+        const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = filetypes.test(file.mimeType);
+        if (extname || mimetype) {
+            return cb(null, true);
+        } else {
+            cb('Error: Images only!');
+        }
+    }
+});
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
@@ -151,6 +189,7 @@ let displaySettings = loadedSettings.displaySettings || defaultSettings.displayS
 let extraSettings = loadedSettings.extraSettings || defaultSettings.extraSettings;
 let notificationSettings = loadedSettings.notificationSettings || defaultSettings.notificationSettings;
 let newsSettings = loadedSettings.newsSettings || defaultSettings.newsSettings;
+let screensaverSettings = loadedSettings.screensaverSettings || defaultSettings.screensaverSettings;
 let customPresets = loadedSettings.customPresets || [];
 
 console.log('Settings loaded from', SETTINGS_FILE);
@@ -597,6 +636,94 @@ app.get('/camera/stream', (req, res) => {
     }
     
     res.redirect(`http://localhost:${cameraSettings.streamPort}/stream.mjpg`);
+});
+
+// --- SCREENSAVER ROUTES ---
+app.get('/screensaver-settings', (req, res) => {
+    res.json(screensaverSettings);
+});
+
+app.post('/screensaver-settings', (req, res) => {
+    const { enabled, speed, animation, showTime, showNoon, timeFormat, autoStartAfter } = req.body;
+    if (enabled !== undefined) screensaverSettings.enabled = enabled;
+    if (speed !== undefined) screensaverSettings.speed = speed;
+    if (animation) screensaverSettings.animation = animation;
+    if (showTime !== undefined) screensaverSettings.showTime = showTime;
+    if (showNoon !== undefined) screensaverSettings.showNoon = showNoon;
+    if (timeFormat) screensaverSettings.timeFormat = timeFormat;
+    if (autoStartAfter !== undefined) screensaverSettings.autoStartAfter = autoStartAfter;
+    
+    io.emit('screensaverSettings', screensaverSettings);
+    saveSettings();
+    res.json({ success: true, screensaverSettings });
+});
+
+app.get('/screensaver-images', (req, res) => {
+    const imageDir = path.join(__dirname, 'public', 'screensaver-images');
+    if (!fs.existsSync(imageDir)) {
+        return res.json({ images: [] });
+    }
+    
+    try {
+        const files = fs.readdirSync(imageDir);
+        const images = files.filter(f => /\.(jpg|jpeg|png|gif|webp)$/i.test(f)).map(f => ({
+            name: f,
+            url: `/screensaver-images/${f}`
+        }));
+        res.json({ images });
+    } catch (e) {
+        res.json({ images: [] });
+    }
+});
+
+app.post('/screensaver-upload', screensaverUpload.array('photos', 50), (req, res) => {
+    if (!req.files || req.files.length === 0) {
+        return res.status(400).json({ error: 'No files uploaded' });
+    }
+    
+    const uploadedFiles = req.files.map(f => ({
+        name: f.filename,
+        url: `/screensaver-images/${f.filename}`
+    }));
+    
+    res.json({ success: true, files: uploadedFiles });
+});
+
+app.delete('/screensaver-images/:filename', (req, res) => {
+    const filename = req.params.filename;
+    const filepath = path.join(__dirname, 'public', 'screensaver-images', filename);
+    
+    // Prevent path traversal
+    if (!filepath.startsWith(path.join(__dirname, 'public', 'screensaver-images'))) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+    
+    try {
+        if (fs.existsSync(filepath)) {
+            fs.unlinkSync(filepath);
+            res.json({ success: true });
+        } else {
+            res.status(404).json({ error: 'File not found' });
+        }
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to delete file' });
+    }
+});
+
+app.delete('/screensaver-images-all', (req, res) => {
+    const imageDir = path.join(__dirname, 'public', 'screensaver-images');
+    
+    try {
+        if (fs.existsSync(imageDir)) {
+            const files = fs.readdirSync(imageDir);
+            for (const file of files) {
+                fs.unlinkSync(path.join(imageDir, file));
+            }
+        }
+        res.json({ success: true, message: 'All screensaver images deleted' });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to delete images' });
+    }
 });
 
 app.get('/camera/snapshot', (req, res) => {
